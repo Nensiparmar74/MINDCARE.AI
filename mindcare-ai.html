@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindCare AI – Student Mental Health Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0a0814;
+      --surface:  #12102a;
+      --card:     #1a1836;
+      --primary:  #9b5de5;
+      --primary2: #6b46d6;
+      --accent:   #f72585;
+      --teal:     #4cc9f0;
+      --gold:     #f8c43a;
+      --green:    #56cba3;
+      --dark:     #e8e2ff;
+      --muted:    #7e789e;
+      --soft:     rgba(155,93,229,.15);
+      --softer:   rgba(155,93,229,.08);
+      --border:   rgba(155,93,229,.2);
+      --glow:     0 0 40px rgba(155,93,229,.25);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: default;
+    }
+    h1,h2,h3,h4 { font-family: 'Sora', sans-serif; }
+    ::selection { background: rgba(155,93,229,.35); }
+
+    /* ── Custom Cursor ── */
+    .cursor-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary); position: fixed; pointer-events: none;
+      z-index: 99999; transform: translate(-50%,-50%); transition: transform .1s;
+    }
+    .cursor-ring {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1.5px solid rgba(155,93,229,.5);
+      position: fixed; pointer-events: none; z-index: 99998;
+      transform: translate(-50%,-50%); transition: all .18s ease;
+    }
+
+    /* ── Noise Texture ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: .025;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp    { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes float     { 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-20px) rotate(3deg)} }
+    @keyframes gradShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    @keyframes breatheAnim { 0%{transform:scale(1);box-shadow:0 0 30px rgba(155,93,229,.3)} 50%{transform:scale(1.25);box-shadow:0 0 70px rgba(155,93,229,.7)} 100%{transform:scale(1);box-shadow:0 0 30px rgba(155,93,229,.3)} }
+    @keyframes typingDot { 0%,80%,100%{transform:scale(0);opacity:.3} 40%{transform:scale(1);opacity:1} }
+    @keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:.5} }
+    @keyframes spin      { to{transform:rotate(360deg)} }
+    @keyframes slideIn   { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes ripple    { to{transform:scale(2.5);opacity:0} }
+    @keyframes glowPulse { 0%,100%{box-shadow:0 0 20px rgba(155,93,229,.2)} 50%{box-shadow:0 0 50px rgba(155,93,229,.5),0 0 80px rgba(155,93,229,.2)} }
+    @keyframes scanline  { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+    @keyframes orbitSpin { to{transform:rotate(360deg)} }
+    @keyframes moodPop   { 0%{transform:scale(1)} 50%{transform:scale(1.35) rotate(-5deg)} 100%{transform:scale(1.2) rotate(-4deg)} }
+
+    .fade-up     { animation: fadeUp .8s ease forwards; opacity:0; }
+    .fade-up-d1  { animation-delay:.15s; }
+    .fade-up-d2  { animation-delay:.3s; }
+    .fade-up-d3  { animation-delay:.45s; }
+    .fade-up-d4  { animation-delay:.6s; }
+
+    .obs { opacity:0; transform:translateY(40px); transition: opacity .9s cubic-bezier(.25,.46,.45,.94), transform .9s cubic-bezier(.25,.46,.45,.94); }
+    .obs.vis { opacity:1; transform:translateY(0); }
+    .obs-left { opacity:0; transform:translateX(-40px); transition: opacity .9s cubic-bezier(.25,.46,.45,.94), transform .9s cubic-bezier(.25,.46,.45,.94); }
+    .obs-left.vis { opacity:1; transform:translateX(0); }
+    .obs-right { opacity:0; transform:translateX(40px); transition: opacity .9s cubic-bezier(.25,.46,.45,.94), transform .9s cubic-bezier(.25,.46,.45,.94); }
+    .obs-right.vis { opacity:1; transform:translateX(0); }
+
+    /* ── Navbar ── */
+    nav {
+      position: fixed; top: 0; left: 0; width: 100%; z-index: 999;
+      padding: 16px 32px;
+      transition: all .4s;
+    }
+    nav.scrolled {
+      background: rgba(10,8,20,.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+    }
+    .nav-inner {
+      max-width: 1180px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      font-family:'Sora',sans-serif; font-weight:800; font-size:1.1rem;
+      color: var(--dark); text-decoration:none;
+      display:flex; align-items:center; gap:8px;
+      letter-spacing: -.02em;
+    }
+    .nav-logo .logo-icon {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg,var(--primary),var(--primary2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; box-shadow: var(--glow);
+    }
+    .nav-links { display:flex; gap:32px; list-style:none; }
+    .nav-links a {
+      text-decoration:none; font-size:.82rem; font-weight:500;
+      color: var(--muted); transition: color .2s; letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    .nav-links a:hover { color: var(--primary); }
+    .nav-cta {
+      padding:9px 22px; border-radius:50px;
+      background: linear-gradient(135deg,var(--primary),var(--primary2));
+      color:#fff; font-size:.82rem; font-weight:600;
+      text-decoration:none; transition: all .3s; border: none; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(155,93,229,.3);
+    }
+    .nav-cta:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(155,93,229,.5); }
+    .hamburger { display:none; cursor:pointer; flex-direction:column; gap:5px; }
+    .hamburger span { width:22px; height:2px; background:var(--primary); border-radius:2px; transition:.3s; }
+    .mobile-menu {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100vh;
+      background:rgba(10,8,20,.97); padding:100px 32px 40px;
+      z-index:998; flex-direction:column; gap:24px;
+      backdrop-filter: blur(20px);
+    }
+    .mobile-menu.open { display:flex; }
+    .mobile-menu a { text-decoration:none; color:var(--dark); font-size:1.4rem; font-weight:600; padding:8px 0; border-bottom: 1px solid var(--border); }
+    .mobile-menu-close { position:absolute; top:24px; right:32px; font-size:1.5rem; background:none; border:none; color:var(--muted); cursor:pointer; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:13px 30px; border-radius:50px; border:none; cursor:pointer;
+      background: linear-gradient(135deg,var(--primary),var(--primary2));
+      color:#fff; font-family:'Sora',sans-serif; font-weight:600; font-size:.9rem;
+      transition: all .35s cubic-bezier(.25,.46,.45,.94); position:relative; overflow:hidden;
+      box-shadow: 0 4px 20px rgba(155,93,229,.3); letter-spacing: -.01em;
+    }
+    .btn-primary::before {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+      opacity:0; transition: opacity .3s;
+    }
+    .btn-primary:hover::before { opacity:1; }
+    .btn-primary:hover { transform:translateY(-3px) scale(1.03); box-shadow:0 16px 40px rgba(155,93,229,.5); }
+    .btn-secondary {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:13px 30px; border-radius:50px; border:1.5px solid var(--border); cursor:pointer;
+      background:transparent; color:var(--dark);
+      font-family:'Sora',sans-serif; font-weight:600; font-size:.9rem;
+      transition: all .3s; letter-spacing: -.01em;
+    }
+    .btn-secondary:hover { border-color:var(--primary); background:var(--softer); color:var(--primary); }
+    .btn-ghost {
+      display:inline-flex; align-items:center; gap:6px;
+      background:none; border:none; color:var(--muted); cursor:pointer;
+      font-family:'Sora',sans-serif; font-size:.85rem; font-weight:500;
+      transition: color .2s; padding:8px 0;
+    }
+    .btn-ghost:hover { color:var(--primary); }
+
+    /* ── Section Helpers ── */
+    .section-tag {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:5px 14px; border-radius:50px;
+      background:rgba(155,93,229,.12); color:var(--primary);
+      font-size:.72rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+      margin-bottom:16px; border: 1px solid rgba(155,93,229,.2);
+    }
+    section { padding: 100px 32px; position: relative; }
+    .section-title {
+      font-size:clamp(2rem,4vw,2.8rem); font-weight:800; color:var(--dark);
+      letter-spacing: -.03em; line-height: 1.1;
+    }
+    .section-sub { font-size:.95rem; color:var(--muted); margin-top:10px; }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh; display:flex; align-items:center; justify-content:center;
+      padding-top: 90px; text-align:center; position:relative; overflow:hidden;
+    }
+    .hero-mesh {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(155,93,229,.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 80% 30%, rgba(76,201,240,.1) 0%, transparent 60%),
+        radial-gradient(ellipse 30% 40% at 20% 70%, rgba(247,37,133,.08) 0%, transparent 60%);
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0;
+      background-image: linear-gradient(rgba(155,93,229,.06) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(155,93,229,.06) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+    }
+    .hero-orb {
+      position:absolute; border-radius:50%; filter:blur(60px); pointer-events:none;
+      animation: float 7s ease-in-out infinite;
+    }
+    .hero-orb1 { width:400px; height:400px; top:5%; right:-5%; background:rgba(155,93,229,.15); animation-delay:0s; }
+    .hero-orb2 { width:300px; height:300px; bottom:10%; left:-5%; background:rgba(76,201,240,.1); animation-delay:2s; }
+    .hero-orb3 { width:200px; height:200px; top:50%; left:50%; background:rgba(247,37,133,.08); animation-delay:4s; }
+    .hero-content { max-width:720px; position:relative; z-index:2; }
+    .hero-badge {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 18px; border-radius:50px;
+      background:rgba(155,93,229,.12); border:1px solid rgba(155,93,229,.25);
+      font-size:.78rem; font-weight:600; color:var(--primary);
+      margin-bottom:24px; letter-spacing:.06em; text-transform:uppercase;
+    }
+    .hero-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); animation: pulse 2s ease-in-out infinite; }
+    .hero-title {
+      font-size:clamp(3.5rem,9vw,6.5rem); font-weight:800; line-height:1.0;
+      letter-spacing: -.04em;
+      background:linear-gradient(135deg,#ffffff 0%,#c4b5fd 40%,#9b5de5 70%,#6b46d6 100%);
+      background-size:200% 200%; animation:gradShift 6s ease infinite;
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .hero-title span { display:block; }
+    .hero-sub {
+      margin-top:20px; font-size:1.1rem; color:var(--muted);
+      max-width:500px; margin-left:auto; margin-right:auto; line-height:1.7;
+    }
+    .hero-btns { margin-top:40px; display:flex; gap:14px; justify-content:center; align-items:center; flex-wrap:wrap; }
+    .hero-stats {
+      margin-top:64px; display:flex; justify-content:center; align-items:center; gap:0; flex-wrap:wrap;
+      border: 1px solid var(--border); border-radius:20px; overflow:hidden;
+      background: rgba(26,24,54,.5); backdrop-filter: blur(10px);
+      max-width: 560px; margin-left:auto; margin-right:auto;
+    }
+    .stat-item {
+      flex:1; min-width:120px; padding:20px 16px; text-align:center;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right:none; }
+    .stat-num { font-family:'Sora',sans-serif; font-size:1.7rem; font-weight:800; color:var(--primary); letter-spacing:-.03em; }
+    .stat-label { font-size:.72rem; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.06em; }
+
+    /* ── Floating Cards Hero ── */
+    .hero-floating-cards {
+      position:absolute; width:100%; height:100%; z-index:1; pointer-events:none;
+    }
+    .h-card {
+      position:absolute; padding:12px 16px; border-radius:14px;
+      background:rgba(26,24,54,.8); border:1px solid var(--border);
+      backdrop-filter:blur(10px); font-size:.78rem; font-weight:600; color:var(--dark);
+      display:flex; align-items:center; gap:8px;
+      animation: float 6s ease-in-out infinite;
+    }
+    .h-card1 { top:25%; left:4%; animation-delay:0s; }
+    .h-card2 { top:40%; right:4%; animation-delay:1.5s; }
+    .h-card3 { bottom:22%; left:8%; animation-delay:3s; }
+
+    /* ── ABOUT ── */
+    #about { background:linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
+    .about-layout { display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; max-width:1100px; margin:0 auto; }
+    .about-visual {
+      position:relative; display:flex; align-items:center; justify-content:center;
+    }
+    .about-orbit {
+      width:300px; height:300px; border:1px solid var(--border); border-radius:50%;
+      position:relative; animation:orbitSpin 20s linear infinite;
+    }
+    .orbit-dot {
+      width:12px; height:12px; border-radius:50%; position:absolute;
+      background:var(--primary); box-shadow:0 0 15px var(--primary);
+    }
+    .orbit-dot1 { top:-6px; left:50%; transform:translateX(-50%); }
+    .orbit-dot2 { bottom:-6px; left:50%; transform:translateX(-50%); background:var(--teal); box-shadow:0 0 15px var(--teal); }
+    .orbit-dot3 { left:-6px; top:50%; transform:translateY(-50%); background:var(--accent); box-shadow:0 0 15px var(--accent); }
+    .orbit-dot4 { right:-6px; top:50%; transform:translateY(-50%); background:var(--gold); box-shadow:0 0 15px var(--gold); }
+    .orbit-inner {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:180px; height:180px; border:1px solid rgba(155,93,229,.3); border-radius:50%;
+      display:flex; align-items:center; justify-content:center; animation:orbitSpin 10s linear infinite reverse;
+      font-size:3.5rem;
+    }
+    .about-text h2 { font-size:clamp(1.8rem,3vw,2.4rem); font-weight:800; letter-spacing:-.03em; line-height:1.15; }
+    .about-text p { color:var(--muted); line-height:1.85; margin-top:16px; font-size:.95rem; }
+    .about-pills { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
+    .pill {
+      padding:7px 16px; border-radius:50px; font-size:.78rem; font-weight:600;
+      background:var(--softer); color:var(--primary); border:1px solid var(--border);
+    }
+
+    /* ── FEATURES ── */
+    #features { background:var(--surface); }
+    .features-header { text-align:center; margin-bottom:56px; }
+    .features-grid {
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:20px; max-width:1100px; margin:0 auto;
+    }
+    .feature-card {
+      padding:32px 28px; border-radius:20px;
+      background:var(--card); border:1px solid var(--border);
+      transition:all .4s cubic-bezier(.25,.46,.45,.94); position:relative; overflow:hidden;
+      cursor:default;
+    }
+    .feature-card::before {
+      content:''; position:absolute; inset:0; border-radius:20px;
+      background:linear-gradient(135deg,rgba(155,93,229,.08),transparent);
+      opacity:0; transition:opacity .4s;
+    }
+    .feature-card:hover::before { opacity:1; }
+    .feature-card:hover { transform:translateY(-8px) scale(1.01); border-color:rgba(155,93,229,.4); box-shadow:0 20px 50px rgba(155,93,229,.15); }
+    .feat-icon {
+      width:52px; height:52px; border-radius:14px; margin-bottom:20px;
+      display:flex; align-items:center; justify-content:center; font-size:1.5rem;
+      border:1px solid var(--border);
+    }
+    .feat-title { font-size:1rem; font-weight:700; color:var(--dark); margin-bottom:10px; }
+    .feat-desc { font-size:.84rem; color:var(--muted); line-height:1.7; }
+    .feat-badge {
+      position:absolute; top:16px; right:16px;
+      font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+      padding:3px 10px; border-radius:50px; background:rgba(155,93,229,.15); color:var(--primary);
+    }
+
+    /* ── CHAT ── */
+    #chat { background:var(--bg); }
+    .chat-wrap { max-width:700px; margin:0 auto; }
+    .chat-intro { text-align:center; margin-bottom:36px; }
+    .chat-box {
+      border-radius:24px; overflow:hidden;
+      background:var(--card); border:1px solid var(--border);
+      box-shadow:0 20px 60px rgba(0,0,0,.4);
+    }
+    .chat-header {
+      padding:18px 24px; display:flex; align-items:center; gap:14px;
+      background:linear-gradient(135deg,#16133a,#1e1b4b);
+      border-bottom:1px solid var(--border);
+    }
+    .chat-avatar {
+      width:42px; height:42px; border-radius:50%;
+      background:linear-gradient(135deg,var(--primary),var(--primary2));
+      display:flex; align-items:center; justify-content:center; font-size:1.1rem;
+      flex-shrink:0; box-shadow:0 0 15px rgba(155,93,229,.4);
+    }
+    .chat-name { font-family:'Sora',sans-serif; font-size:.95rem; font-weight:700; color:#fff; }
+    .chat-status { font-size:.74rem; color:#a5b4fc; display:flex; align-items:center; gap:5px; margin-top:2px; }
+    .status-dot { width:7px; height:7px; border-radius:50%; background:#4ade80; animation:pulse 2s ease-in-out infinite; }
+    .chat-actions-right { margin-left:auto; display:flex; gap:8px; }
+    .chat-action-btn { background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem; padding:4px; border-radius:6px; transition:.2s; }
+    .chat-action-btn:hover { color:var(--primary); background:var(--softer); }
+    .chat-area {
+      padding:20px; min-height:320px; max-height:400px; overflow-y:auto;
+      display:flex; flex-direction:column; gap:14px;
+      background:linear-gradient(180deg,#0d0b1e,#0a0814);
+    }
+    .chat-area::-webkit-scrollbar { width:3px; }
+    .chat-area::-webkit-scrollbar-track { background:transparent; }
+    .chat-area::-webkit-scrollbar-thumb { background:rgba(155,93,229,.3); border-radius:3px; }
+    .msg-row { display:flex; gap:10px; align-items:flex-end; animation:slideIn .3s ease forwards; }
+    .msg-row.user { flex-direction:row-reverse; }
+    .msg-bubble {
+      padding:12px 16px; border-radius:18px; font-size:.87rem; max-width:78%; line-height:1.6;
+    }
+    .msg-bubble.bot { background:var(--card); color:var(--dark); border-bottom-left-radius:4px; border:1px solid var(--border); }
+    .msg-bubble.user {
+      background:linear-gradient(135deg,var(--primary),var(--primary2));
+      color:#fff; border-bottom-right-radius:4px;
+    }
+    .msg-timestamp { font-size:.65rem; color:var(--muted); margin-top:4px; text-align:right; }
+    .msg-avatar {
+      width:30px; height:30px; border-radius:50%; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:.8rem;
+    }
+    .msg-avatar.bot-av { background:rgba(155,93,229,.15); border:1px solid var(--border); }
+    .msg-avatar.user-av { background:linear-gradient(135deg,var(--primary),var(--primary2)); color:#fff; font-size:.65rem; font-weight:700; }
+    .typing-indicator { display:flex; gap:4px; align-items:center; padding:12px 16px; background:var(--card); border-radius:18px; border-bottom-left-radius:4px; width:fit-content; border:1px solid var(--border); }
+    .typing-dot { width:6px; height:6px; border-radius:50%; background:var(--primary); animation:typingDot 1.2s ease-in-out infinite; }
+    .typing-dot:nth-child(2){animation-delay:.2s}
+    .typing-dot:nth-child(3){animation-delay:.4s}
+    .chat-footer {
+      padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:center;
+      background:var(--card);
+    }
+    .chat-input {
+      flex:1; padding:12px 18px; border-radius:50px; border:1.5px solid var(--border);
+      background:rgba(10,8,20,.6); font-size:.88rem; font-family:'Sora',sans-serif;
+      color:var(--dark); outline:none; transition: border-color .2s, box-shadow .2s;
+    }
+    .chat-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(155,93,229,.1); }
+    .chat-input::placeholder { color:var(--muted); }
+    .send-btn {
+      width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
+      background:linear-gradient(135deg,var(--primary),var(--primary2));
+      color:#fff; display:flex; align-items:center; justify-content:center;
+      transition:all .3s; flex-shrink:0; box-shadow:0 4px 15px rgba(155,93,229,.3);
+    }
+    .send-btn:hover { transform:scale(1.1); box-shadow:0 8px 25px rgba(155,93,229,.5); }
+    .send-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+    .chat-toolbar {
+      padding:10px 16px; border-top:1px solid var(--border); display:flex; gap:8px;
+      background:var(--card); flex-wrap:wrap;
+    }
+    .quick-btn {
+      padding:6px 14px; border-radius:50px; border:1px solid var(--border);
+      background:transparent; color:var(--muted); font-size:.75rem; font-weight:500;
+      cursor:pointer; transition:all .2s; font-family:'Sora',sans-serif;
+    }
+    .quick-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--softer); }
+    .chat-disclaimer {
+      text-align:center; font-size:.73rem; color:var(--muted); margin-top:14px;
+      padding:10px 16px; background:rgba(247,37,133,.05); border-radius:12px;
+      border:1px solid rgba(247,37,133,.12);
+    }
+
+    /* ── BREATHING ── */
+    #breathing { background:var(--surface); }
+    .breath-wrap { max-width:560px; margin:0 auto; text-align:center; }
+    .breath-card {
+      padding:52px 40px; border-radius:28px;
+      background:var(--card); border:1px solid var(--border);
+      box-shadow:0 20px 60px rgba(0,0,0,.3);
+    }
+    .breath-ring-container {
+      position:relative; width:180px; height:180px; margin:0 auto 36px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .breath-ring {
+      position:absolute; inset:0; border-radius:50%;
+      border:2px solid rgba(155,93,229,.2);
+    }
+    .breath-circle {
+      width:140px; height:140px; border-radius:50%;
+      background:linear-gradient(135deg,var(--primary),var(--primary2));
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Sora',sans-serif; font-weight:700; font-size:.95rem; color:#fff;
+      position:relative; z-index:2;
+      box-shadow:0 0 40px rgba(155,93,229,.4);
+      transition:background .5s;
+    }
+    .breath-phase-text { font-size:1.1rem; margin-bottom:4px; }
+    .breath-count { font-size:2rem; font-weight:800; font-family:'JetBrains Mono',monospace; }
+    .breath-label { font-size:.8rem; color:var(--muted); margin-bottom:24px; }
+    .breath-progress { width:100%; height:3px; border-radius:3px; background:var(--border); margin:20px 0; overflow:hidden; }
+    .breath-bar { height:100%; background:linear-gradient(90deg,var(--primary),var(--teal)); width:0; border-radius:3px; transition:width 4s linear; }
+    .breath-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:24px; }
+    .breath-cycles { font-size:.8rem; color:var(--muted); margin-top:16px; font-family:'JetBrains Mono',monospace; }
+
+    /* ── MOOD ── */
+    #mood { background:var(--bg); }
+    .mood-wrap { max-width:760px; margin:0 auto; text-align:center; }
+    .mood-emojis {
+      display:flex; justify-content:center; align-items:center;
+      gap:14px; flex-wrap:wrap; margin:36px 0 20px;
+    }
+    .emoji-btn {
+      width:100px; height:100px; border-radius:22px; border:1.5px solid rgba(155,93,229,.18);
+      background:var(--card); cursor:pointer; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:8px;
+      transition:all .3s cubic-bezier(.34,1.56,.64,1); font-size:2.1rem;
+      position:relative; overflow:hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    }
+    .emoji-btn::after {
+      content:''; position:absolute; inset:0; border-radius:22px;
+      background:linear-gradient(135deg,var(--primary),var(--primary2)); opacity:0; transition:.3s;
+    }
+    .emoji-btn:hover { transform:scale(1.12) rotate(-3deg); border-color:var(--primary); box-shadow:0 12px 32px rgba(155,93,229,.3); }
+    .emoji-btn.selected { border-color:var(--primary); animation:moodPop .4s ease; transform:scale(1.12) rotate(-3deg); box-shadow:0 12px 32px rgba(155,93,229,.4); background:rgba(155,93,229,.12); }
+    .emoji-btn span.label { font-size:.72rem; font-weight:600; color:var(--muted); position:relative; z-index:1; letter-spacing:.01em; }
+    .emoji-btn span.em { position:relative; z-index:1; line-height:1; }
+    .mood-msg {
+      font-size:.95rem; font-weight:600; color:var(--green);
+      opacity:0; transition:opacity .4s; margin-top:8px;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+    }
+    .mood-chart-wrap { margin-top:24px; }
+    .mood-history {
+      margin-top:24px; padding:22px; border-radius:18px;
+      background:var(--card); border:1px solid var(--border); text-align:left; display:none;
+    }
+    .mood-history.show { display:block; }
+    .mood-history h4 { font-size:.88rem; font-weight:700; color:var(--dark); margin-bottom:14px; text-transform:uppercase; letter-spacing:.05em; }
+    .mood-log-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:.82rem; color:var(--muted); }
+    .mood-log-item:last-child { border:none; }
+
+    /* ── JOURNAL ── */
+    #journal { background:var(--surface); }
+    .journal-wrap { max-width:700px; margin:0 auto; }
+    .journal-header { text-align:center; margin-bottom:40px; }
+    .journal-box {
+      border-radius:24px; background:var(--card); border:1px solid var(--border);
+      overflow:hidden;
+    }
+    .journal-top {
+      padding:20px 24px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .journal-date { font-size:.8rem; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+    .journal-prompt-area { padding:24px; }
+    .journal-prompt-label { font-size:.75rem; color:var(--primary); font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+    .journal-prompt-text { font-size:1.1rem; color:var(--dark); font-family:'Instrument Serif',serif; font-style:italic; line-height:1.6; margin-bottom:20px; }
+    .journal-textarea {
+      width:100%; min-height:160px; padding:16px; border-radius:14px;
+      border:1.5px solid var(--border); background:rgba(10,8,20,.5);
+      color:var(--dark); font-family:'Sora',sans-serif; font-size:.88rem;
+      resize:vertical; outline:none; transition: border-color .2s, box-shadow .2s;
+      line-height:1.7;
+    }
+    .journal-textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(155,93,229,.1); }
+    .journal-textarea::placeholder { color:var(--muted); }
+    .journal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .journal-char-count { font-size:.75rem; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+    .journal-entries-list { margin-top:24px; display:flex; flex-direction:column; gap:12px; }
+    .journal-entry-item {
+      padding:16px 20px; border-radius:14px;
+      background:var(--card); border:1px solid var(--border);
+      transition:.2s;
+    }
+    .journal-entry-item:hover { border-color:rgba(155,93,229,.35); }
+    .journal-entry-date { font-size:.72rem; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-bottom:6px; }
+    .journal-entry-text { font-size:.85rem; color:var(--dark); line-height:1.6; }
+
+    /* ── RESOURCES ── */
+    #resources { background:var(--bg); }
+    .resources-header { text-align:center; margin-bottom:48px; }
+    .resources-grid {
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:20px; max-width:1100px; margin:0 auto;
+    }
+    .resource-card {
+      padding:28px 24px; border-radius:20px; background:var(--card);
+      border:1px solid var(--border); display:flex; flex-direction:column;
+      transition:all .4s cubic-bezier(.25,.46,.45,.94);
+      position:relative; overflow:hidden;
+    }
+    .resource-card::before {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg,var(--primary),var(--teal));
+      transform:scaleX(0); transform-origin:left; transition:.4s;
+    }
+    .resource-card:hover::before { transform:scaleX(1); }
+    .resource-card:hover { transform:translateY(-8px); box-shadow:0 20px 50px rgba(0,0,0,.3); border-color:rgba(155,93,229,.35); }
+    .res-icon {
+      width:52px; height:52px; border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.55rem; margin-bottom:18px;
+      border:1px solid rgba(255,255,255,.07);
+      flex-shrink:0;
+    }
+    .res-title { font-size:1rem; font-weight:700; color:var(--dark); margin-bottom:10px; }
+    .res-desc { font-size:.84rem; color:var(--muted); line-height:1.7; margin-bottom:18px; flex:1; }
+    .res-link {
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:.84rem; font-weight:600; color:var(--primary); text-decoration:none;
+      transition:.2s; letter-spacing:-.01em;
+    }
+    .res-link:hover { color:var(--teal); }
+    @media(max-width:960px) { .resources-grid { grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:540px) { .resources-grid { grid-template-columns: 1fr; } }
+
+    /* ── AFFIRMATIONS ── */
+    #affirmations { background:var(--surface); }
+    .affirm-wrap { max-width:620px; margin:0 auto; text-align:center; }
+    .affirm-card {
+      padding:44px 40px; border-radius:24px;
+      background:linear-gradient(135deg,var(--card),#1a1630);
+      border:1px solid var(--border);
+      margin-bottom:24px; position:relative; overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,.3);
+    }
+    .affirm-card::before {
+      content:''; position:absolute; inset:0;
+      background:radial-gradient(ellipse 60% 60% at 50% 0%, rgba(155,93,229,.12), transparent);
+    }
+    .quote-icon { font-size:3rem; color:var(--primary); opacity:.4; margin-bottom:16px; font-family:'Instrument Serif',serif; line-height:1; }
+    .affirm-text {
+      font-family:'Instrument Serif',serif; font-size:1.3rem; line-height:1.6;
+      color:var(--dark); font-style:italic; transition: opacity .4s, transform .4s;
+      position:relative; z-index:1;
+    }
+    .affirm-author { font-size:.78rem; color:var(--muted); margin-top:16px; font-family:'Sora',sans-serif; font-style:normal; position:relative; z-index:1; }
+
+    /* ── BENEFITS ── */
+    #benefits { background:var(--bg); }
+    .benefits-header { text-align:center; margin-bottom:48px; }
+    .benefits-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+      gap:20px; max-width:1000px; margin:0 auto;
+    }
+    .benefit-card {
+      padding:32px 28px; border-radius:20px; background:var(--card);
+      border:1px solid var(--border); text-align:center; transition:all .35s;
+    }
+    .benefit-card:hover { border-color:rgba(155,93,229,.4); transform:translateY(-4px); box-shadow:0 15px 40px rgba(155,93,229,.1); }
+    .ben-icon { font-size:2.4rem; margin-bottom:14px; }
+    .ben-title { font-size:1rem; font-weight:700; color:var(--dark); margin-bottom:8px; }
+    .ben-desc { font-size:.83rem; color:var(--muted); line-height:1.65; }
+
+    /* ── TESTIMONIALS ── */
+    #testimonials { background:var(--surface); }
+    .testimonials-header { text-align:center; margin-bottom:48px; }
+    .testimonials-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; max-width:1000px; margin:0 auto; }
+    .testimonial-card {
+      padding:28px; border-radius:20px; background:var(--card); border:1px solid var(--border);
+      transition:.35s;
+    }
+    .testimonial-card:hover { border-color:rgba(155,93,229,.35); transform:translateY(-4px); }
+    .testimonial-stars { color:var(--gold); font-size:.95rem; margin-bottom:14px; letter-spacing:2px; }
+    .testimonial-text { font-size:.88rem; color:var(--muted); line-height:1.75; font-style:italic; margin-bottom:18px; }
+    .testimonial-author { display:flex; align-items:center; gap:12px; }
+    .testimonial-avatar { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+    .testimonial-name { font-size:.85rem; font-weight:700; color:var(--dark); }
+    .testimonial-role { font-size:.74rem; color:var(--muted); }
+
+    /* ── FOOTER ── */
+    footer {
+      padding:60px 32px 40px;
+      background:linear-gradient(180deg,var(--surface),#060412);
+      border-top:1px solid var(--border);
+    }
+    .footer-inner { max-width:1100px; margin:0 auto; }
+    .footer-top { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:40px; margin-bottom:48px; }
+    .footer-brand .logo { font-weight:800; font-size:1.1rem; color:var(--dark); display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+    .footer-brand p { font-size:.84rem; color:var(--muted); line-height:1.7; max-width:260px; }
+    .footer-col h4 { font-size:.8rem; font-weight:700; color:var(--dark); text-transform:uppercase; letter-spacing:.08em; margin-bottom:16px; }
+    .footer-col a { display:block; font-size:.83rem; color:var(--muted); text-decoration:none; margin-bottom:10px; transition:.2s; }
+    .footer-col a:hover { color:var(--primary); }
+    .footer-bottom { padding-top:24px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .footer-copy { font-size:.75rem; color:#3a3860; }
+    .footer-disclaimer { font-size:.73rem; color:#3a3860; text-align:right; max-width:380px; }
+
+    /* ── Crisis Banner ── */
+    .crisis-banner {
+      position:fixed; bottom:24px; right:24px; z-index:999;
+      background:linear-gradient(135deg,#b91c1c,#991b1b);
+      color:#fff; padding:12px 20px; border-radius:16px;
+      font-size:.8rem; font-weight:700; cursor:pointer;
+      box-shadow:0 8px 30px rgba(185,28,28,.4);
+      display:flex; align-items:center; gap:8px;
+      animation:fadeUp .6s .8s ease both;
+      text-decoration:none; border:1px solid rgba(255,255,255,.1);
+      transition:all .3s;
+    }
+    .crisis-banner:hover { transform:translateY(-3px); box-shadow:0 14px 40px rgba(185,28,28,.5); }
+
+    /* ── Risk Modal ── */
+    .risk-modal-overlay {
+      position:fixed; inset:0; background:rgba(6,4,18,.7); z-index:9999;
+      display:none; align-items:center; justify-content:center; padding:20px;
+      backdrop-filter: blur(8px);
+    }
+    .risk-modal-overlay.show { display:flex; }
+    .risk-modal {
+      background:var(--card); border-radius:24px; padding:36px; max-width:440px; width:100%;
+      box-shadow:0 30px 80px rgba(0,0,0,.5); text-align:center; animation:fadeUp .4s ease;
+      border:1px solid var(--border);
+    }
+    .risk-modal-icon { font-size:3rem; margin-bottom:14px; }
+    .risk-modal h3 { font-family:'Sora',sans-serif; font-size:1.3rem; font-weight:700; color:var(--dark); margin-bottom:10px; }
+    .risk-modal p { font-size:.9rem; color:var(--muted); line-height:1.65; margin-bottom:20px; }
+    .risk-helplines { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+    .helpline-item {
+      padding:12px 18px; border-radius:12px; background:rgba(247,37,133,.08); border:1px solid rgba(247,37,133,.2);
+      display:flex; align-items:center; gap:10px; font-size:.85rem; color:var(--dark); font-weight:600;
+    }
+    .risk-dismiss { font-size:.8rem; color:var(--muted); cursor:pointer; text-decoration:underline; }
+    .risk-dismiss:hover { color:var(--dark); }
+
+    /* ── Progress / Stats Dashboard ── */
+    #dashboard { background:var(--card); }
+    .dashboard-wrap { max-width:900px; margin:0 auto; }
+    .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-top:40px; }
+    .dash-card {
+      padding:24px 20px; border-radius:18px; background:var(--surface); border:1px solid var(--border);
+      text-align:center; transition:.35s;
+    }
+    .dash-card:hover { border-color:rgba(155,93,229,.4); transform:translateY(-3px); }
+    .dash-val { font-size:2.2rem; font-weight:800; letter-spacing:-.04em; font-family:'Sora',sans-serif; }
+    .dash-label { font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
+    .dash-sub { font-size:.72rem; color:var(--primary); margin-top:4px; }
+    .streak-fire { display:inline; }
+
+    /* ── Responsive ── */
+    @media(max-width:900px) {
+      .features-grid { grid-template-columns:repeat(2,1fr); }
+      .about-layout { grid-template-columns:1fr; gap:40px; }
+      .about-visual { display:none; }
+      .footer-top { grid-template-columns:1fr 1fr; }
+    }
+    @media(max-width:768px) {
+      .nav-links, .nav-cta { display:none; }
+      .hamburger { display:flex; }
+      section { padding:72px 20px; }
+      .hero-floating-cards { display:none; }
+    }
+    @media(max-width:600px) {
+      .features-grid { grid-template-columns:1fr; }
+      .hero-btns { flex-direction:column; align-items:center; }
+      .footer-top { grid-template-columns:1fr; }
+      .emoji-btn { width:76px; height:76px; font-size:1.6rem; }
+    }
+
+    /* ── Scroll Progress Bar ── */
+    .scroll-bar {
+      position:fixed; top:0; left:0; height:2px; z-index:9999;
+      background:linear-gradient(90deg,var(--primary),var(--teal),var(--accent));
+      width:0%; transition:width .1s linear;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Scroll Progress -->
+<div class="scroll-bar" id="scrollBar"></div>
+
+<!-- ── Navbar ── -->
+<nav id="mainNav">
+  <div class="nav-inner">
+    <a href="#hero" class="nav-logo">
+      <div class="logo-icon">🧠</div>
+      MindCare AI
+    </a>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#chat">Chat</a></li>
+      <li><a href="#mood">Mood</a></li>
+      <li><a href="#journal">Journal</a></li>
+      <li><a href="#resources">Resources</a></li>
+    </ul>
+    <button class="nav-cta" onclick="document.getElementById('chat').scrollIntoView({behavior:'smooth'})">Start Chat</button>
+    <div class="hamburger" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-menu-close" onclick="closeMenu()">✕</button>
+  <a href="#about" onclick="closeMenu()">About</a>
+  <a href="#features" onclick="closeMenu()">Features</a>
+  <a href="#chat" onclick="closeMenu()">Chat</a>
+  <a href="#mood" onclick="closeMenu()">Mood Tracker</a>
+  <a href="#journal" onclick="closeMenu()">Journal</a>
+  <a href="#resources" onclick="closeMenu()">Resources</a>
+  <button class="btn-primary" onclick="closeMenu();document.getElementById('chat').scrollIntoView({behavior:'smooth'})" style="margin-top:8px;">Start Chat →</button>
+</div>
+
+<!-- ── Hero ── -->
+<section id="hero">
+  <div class="hero-mesh"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-orb hero-orb1"></div>
+  <div class="hero-orb hero-orb2"></div>
+  <div class="hero-orb hero-orb3"></div>
+  <div class="hero-floating-cards">
+    <div class="h-card h-card1">
+      <span>💜</span> <span>Chat anytime, anywhere</span>
+    </div>
+    <div class="h-card h-card2">
+      <span>🔒</span> <span>100% Anonymous</span>
+    </div>
+    <div class="h-card h-card3">
+      <span>🌐</span> <span>English · Hindi · Gujarati</span>
+    </div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge fade-up">✨ AI-Powered Mental Wellness</div>
+    <h1 class="hero-title fade-up fade-up-d1">
+      <span>MindCare</span>
+      <span>AI</span>
+    </h1>
+    <p class="hero-sub fade-up fade-up-d2">Your compassionate AI companion — safe, stigma-free mental health support for students, 24/7. In the language you speak.</p>
+    <div class="hero-btns fade-up fade-up-d3">
+      <button class="btn-primary" onclick="document.getElementById('chat').scrollIntoView({behavior:'smooth'})">💬 Start Chatting</button>
+      <button class="btn-secondary" onclick="document.getElementById('mood').scrollIntoView({behavior:'smooth'})">😊 Track My Mood</button>
+    </div>
+    <div class="hero-stats fade-up fade-up-d4">
+      <div class="stat-item">
+        <div class="stat-num">24/7</div>
+        <div class="stat-label">Always On</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Anonymous</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">Free</div>
+        <div class="stat-label">Forever</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">3</div>
+        <div class="stat-label">Languages</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── About ── -->
+<section id="about">
+  <div class="about-layout">
+    <div class="about-visual obs-left">
+      <div class="about-orbit">
+        <div class="orbit-dot orbit-dot1"></div>
+        <div class="orbit-dot orbit-dot2"></div>
+        <div class="orbit-dot orbit-dot3"></div>
+        <div class="orbit-dot orbit-dot4"></div>
+        <div class="orbit-inner">🧠</div>
+      </div>
+    </div>
+    <div class="about-text obs-right">
+      <div class="section-tag">Our Mission</div>
+      <h2>Mental health support that <em style="font-family:'Instrument Serif',serif;font-style:italic;">actually</em> understands you</h2>
+      <p>MindCare AI is built for students and young people navigating stress, anxiety, loneliness, and exam pressure. Powered by <strong style="color:var(--primary)">Claude AI</strong>, we provide a judgment-free space where you can express yourself freely — in English, Hindi, or Gujarati.</p>
+      <p style="margin-top:12px;">No sign-ups. No waiting rooms. No shame. Just compassionate AI that listens, understands, and guides you toward better mental wellness.</p>
+      <div class="about-pills">
+        <span class="pill">🔒 Anonymous</span>
+        <span class="pill">🤖 Claude AI</span>
+        <span class="pill">🌙 24/7</span>
+        <span class="pill">🆓 Free Forever</span>
+        <span class="pill">🌐 Multilingual</span>
+        <span class="pill">🚨 Crisis Detection</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section id="features">
+  <div class="features-header obs">
+    <div class="section-tag">What We Offer</div>
+    <h2 class="section-title">Everything you need to feel better</h2>
+    <p class="section-sub">Powerful tools crafted for student mental wellness</p>
+  </div>
+  <div class="features-grid" style="max-width:1100px;margin:0 auto;">
+    <div class="feature-card obs">
+      <div class="feat-badge">Core</div>
+      <div class="feat-icon" style="background:rgba(155,93,229,.1);">🤖</div>
+      <div class="feat-title">AI Chat Companion</div>
+      <div class="feat-desc">Talk to Claude AI anytime. Get empathetic, instant emotional guidance and practical coping strategies tailored for students.</div>
+    </div>
+    <div class="feature-card obs">
+      <div class="feat-icon" style="background:rgba(76,201,240,.1);">📊</div>
+      <div class="feat-title">Mood Tracker</div>
+      <div class="feat-desc">Log your daily mood with beautiful emoji check-ins. Watch your emotional patterns evolve and spot what affects your wellbeing.</div>
+    </div>
+    <div class="feature-card obs">
+      <div class="feat-icon" style="background:rgba(86,203,163,.1);">🌬️</div>
+      <div class="feat-title">Breathing Exercises</div>
+      <div class="feat-desc">Guided box-breathing with real-time animation and countdown. Calm your mind and body in under 3 minutes.</div>
+    </div>
+    <div class="feature-card obs">
+      <div class="feat-badge">New</div>
+      <div class="feat-icon" style="background:rgba(248,196,58,.1);">📔</div>
+      <div class="feat-title">Daily Journal</div>
+      <div class="feat-desc">AI-generated journaling prompts to help you reflect, process emotions, and build self-awareness one entry at a time.</div>
+    </div>
+    <div class="feature-card obs">
+      <div class="feat-icon" style="background:rgba(247,37,133,.1);">🚨</div>
+      <div class="feat-title">Crisis Detection</div>
+      <div class="feat-desc">AI actively monitors for distress signals and instantly connects you with professional helplines — no delays, no judgment.</div>
+    </div>
+    <div class="feature-card obs">
+      <div class="feat-icon" style="background:rgba(155,93,229,.1);">✨</div>
+      <div class="feat-title">Daily Affirmations</div>
+      <div class="feat-desc">Start every day with uplifting, research-backed affirmations designed to rewire negative thought patterns.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Chat ── -->
+<section id="chat">
+  <div class="chat-wrap">
+    <div class="chat-intro obs">
+      <div class="section-tag">Try It Now</div>
+      <h2 class="section-title">Chat with MindCare</h2>
+      <p class="section-sub">Powered by Claude AI — real empathy, not scripted replies</p>
+    </div>
+    <div class="chat-box obs">
+      <div class="chat-header">
+        <div class="chat-avatar">🧠</div>
+        <div>
+          <div class="chat-name">MindCare AI</div>
+          <div class="chat-status"><span class="status-dot"></span> Online · Claude Powered</div>
+        </div>
+        <div class="chat-actions-right">
+          <button class="chat-action-btn" title="Clear chat" onclick="clearChat()">🗑️</button>
+        </div>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div class="msg-row">
+          <div class="msg-avatar bot-av">🧠</div>
+          <div>
+            <div class="msg-bubble bot">Hi there! 💜 I'm MindCare AI — your safe, judgment-free mental health companion. I'm here to listen whenever you need. How are you feeling today?</div>
+            <div class="msg-timestamp">Just now</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-toolbar">
+        <button class="quick-btn" onclick="sendQuick('I\'m feeling anxious about exams 😰')">😰 Exam Stress</button>
+        <button class="quick-btn" onclick="sendQuick('I feel lonely and isolated 😔')">😔 Loneliness</button>
+        <button class="quick-btn" onclick="sendQuick('Can you help me calm down? 🌬️')">🌬️ Calm Me</button>
+        <button class="quick-btn" onclick="sendQuick('I need a motivational boost 💪')">💪 Motivate Me</button>
+        <button class="quick-btn" onclick="sendQuick('I can\'t sleep because of anxiety 😴')">😴 Sleep Issues</button>
+      </div>
+      <div class="chat-footer">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Type your feelings here... (English, Hindi, or Gujarati)" autocomplete="off" />
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="chat-disclaimer obs">
+      ⚠️ MindCare AI is <strong>not a replacement</strong> for professional therapy. If you're in crisis, please call <strong>iCall: 9152987821</strong>
+    </div>
+  </div>
+</section>
+
+<!-- ── Breathing ── -->
+<section id="breathing">
+  <div class="breath-wrap">
+    <div class="obs" style="text-align:center;margin-bottom:40px;">
+      <div class="section-tag">Relax & Breathe</div>
+      <h2 class="section-title">Box Breathing Exercise</h2>
+      <p class="section-sub">Follow the rhythm — proven technique used by Navy SEALs and therapists</p>
+    </div>
+    <div class="breath-card obs">
+      <div class="breath-ring-container">
+        <div class="breath-ring"></div>
+        <div class="breath-circle" id="breathCircle">
+          <div>
+            <div class="breath-phase-text" id="breathPhaseText">Ready?</div>
+            <div class="breath-count" id="breathCountdown">4</div>
+          </div>
+        </div>
+      </div>
+      <div class="breath-label" id="breathLabel">Box breathing: 4 counts each phase</div>
+      <div class="breath-progress"><div class="breath-bar" id="breathBar"></div></div>
+      <div class="breath-btns">
+        <button class="btn-primary" onclick="startBreathing()">▶ Start</button>
+        <button class="btn-secondary" onclick="stopBreathing()">⏹ Stop</button>
+      </div>
+      <div class="breath-cycles obs" id="breathCycles">Cycles completed: <strong id="cycleCount" style="color:var(--primary)">0</strong></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Mood ── -->
+<section id="mood">
+  <div class="mood-wrap">
+    <div class="obs" style="text-align:center;">
+      <div class="section-tag">Daily Check-In</div>
+      <h2 style="font-size:clamp(2.6rem,7vw,4.2rem);font-weight:800;letter-spacing:-.04em;line-height:1.05;color:var(--dark);margin-top:8px;">How are you feeling?</h2>
+      <p class="section-sub" style="margin-top:14px;">Tap an emoji — your mood log helps you discover patterns</p>
+    </div>
+    <div class="mood-emojis obs">
+      <button class="emoji-btn" data-mood="Happy 😊" data-color="#56cba3" onclick="selectMood(this)"><span class="em">😊</span><span class="label">Happy</span></button>
+      <button class="emoji-btn" data-mood="Excited 🤩" data-color="#f8c43a" onclick="selectMood(this)"><span class="em">🤩</span><span class="label">Excited</span></button>
+      <button class="emoji-btn" data-mood="Neutral 😐" data-color="#7e789e" onclick="selectMood(this)"><span class="em">😐</span><span class="label">Neutral</span></button>
+      <button class="emoji-btn" data-mood="Sad 😢" data-color="#4cc9f0" onclick="selectMood(this)"><span class="em">😢</span><span class="label">Sad</span></button>
+      <button class="emoji-btn" data-mood="Stressed 🤯" data-color="#f72585" onclick="selectMood(this)"><span class="em">🤯</span><span class="label">Stressed</span></button>
+      <button class="emoji-btn" data-mood="Anxious 😨" data-color="#f59e0b" onclick="selectMood(this)"><span class="em">😨</span><span class="label">Anxious</span></button>
+      <button class="emoji-btn" data-mood="Calm 😌" data-color="#9b5de5" onclick="selectMood(this)"><span class="em">😌</span><span class="label">Calm</span></button>
+      <button class="emoji-btn" data-mood="Tired 🥱" data-color="#6b7280" onclick="selectMood(this)"><span class="em">🥱</span><span class="label">Tired</span></button>
+    </div>
+    <div class="mood-msg" id="moodMsg">✓ Mood logged! Take care of yourself 💜</div>
+    <div class="mood-history obs" id="moodHistory">
+      <h4>📅 Today's Mood Log</h4>
+      <div id="moodLog"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Journal ── -->
+<section id="journal">
+  <div class="journal-wrap">
+    <div class="journal-header obs">
+      <div class="section-tag">Daily Journal</div>
+      <h2 class="section-title">Write it out</h2>
+      <p class="section-sub">Journaling reduces anxiety by 27%. Start with today's AI-generated prompt.</p>
+    </div>
+    <div class="journal-box obs">
+      <div class="journal-top">
+        <div class="journal-date" id="journalDate"></div>
+        <button class="btn-ghost" onclick="newJournalPrompt()">↻ New Prompt</button>
+      </div>
+      <div class="journal-prompt-area">
+        <div class="journal-prompt-label">💡 Today's Prompt</div>
+        <div class="journal-prompt-text" id="journalPromptText">Loading your personalized prompt...</div>
+        <textarea class="journal-textarea" id="journalTextarea" placeholder="Start writing here... no judgment, just your thoughts. This is your safe space." oninput="updateCharCount()"></textarea>
+      </div>
+      <div class="journal-footer">
+        <div class="journal-char-count"><span id="charCount">0</span> characters</div>
+        <button class="btn-primary" onclick="saveJournalEntry()">💾 Save Entry</button>
+      </div>
+    </div>
+    <div class="journal-entries-list" id="journalEntriesList"></div>
+  </div>
+</section>
+
+<!-- ── Affirmations ── -->
+<section id="affirmations">
+  <div class="affirm-wrap">
+    <div class="obs" style="text-align:center;margin-bottom:32px;">
+      <div class="section-tag">Daily Boost</div>
+      <h2 class="section-title">Today's Affirmation</h2>
+    </div>
+    <div class="affirm-card obs">
+      <div class="quote-icon">❝</div>
+      <div class="affirm-text" id="affirmText">You are stronger than you think. Every challenge makes you wiser and more resilient.</div>
+      <div class="affirm-author" id="affirmAuthor">— Your daily reminder 💜</div>
+    </div>
+    <button class="btn-primary obs" onclick="newAffirmation()">✨ New Affirmation</button>
+  </div>
+</section>
+
+<!-- ── Resources ── -->
+<section id="resources">
+  <div class="resources-header obs">
+    <div class="section-tag">Learn & Grow</div>
+    <h2 class="section-title">Wellness Resources</h2>
+    <p class="section-sub">Hand-picked tools and guides for your mental health journey</p>
+  </div>
+  <div class="resources-grid">
+    <div class="resource-card obs">
+      <div class="res-icon" style="background:rgba(155,93,229,.18);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2" fill="#9b5de5"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#f72585"/><rect x="3" y="13" width="8" height="8" rx="2" fill="#4cc9f0"/><rect x="13" y="13" width="8" height="8" rx="2" fill="#f8c43a"/></svg>
+      </div>
+      <div class="res-title">Meditation Guides</div>
+      <div class="res-desc">Beginner to advanced techniques to calm your mind and find clarity.</div>
+      <a href="https://www.headspace.com/meditation/techniques" target="_blank" class="res-link">Explore →</a>
+    </div>
+    <div class="resource-card obs">
+      <div class="res-icon" style="background:rgba(30,28,60,.9); border-color:rgba(155,93,229,.25);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="1.8" stroke-linecap="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      </div>
+      <div class="res-title">Mental Health Podcasts</div>
+      <div class="res-desc">Inspiring conversations on mental health, anxiety, and building resilience.</div>
+      <a href="https://www.mentalhealth.org.uk/podcasts-and-videos" target="_blank" class="res-link">Explore →</a>
+    </div>
+    <div class="resource-card obs">
+      <div class="res-icon" style="background:rgba(30,28,55,.9); border-color:rgba(155,93,229,.2);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e8e2ff" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+      </div>
+      <div class="res-title">Journal Prompts</div>
+      <div class="res-desc">500+ guided prompts to process emotions and build self-awareness.</div>
+      <a href="https://positivepsychology.com/journaling-prompts/" target="_blank" class="res-link">Explore →</a>
+    </div>
+    <div class="resource-card obs">
+      <div class="res-icon" style="background:linear-gradient(135deg,#dc2626,#991b1b);">
+        <span style="font-family:'Sora',sans-serif;font-weight:800;font-size:.85rem;color:#fff;letter-spacing:-.02em;">SOS</span>
+      </div>
+      <div class="res-title">Crisis Helplines</div>
+      <div class="res-desc">iCall: 9152987821 · Vandrevala: 1860-2662-345 · NIMHANS: 080-46110007</div>
+      <a href="https://icallhelpline.org/" target="_blank" class="res-link">Get Help →</a>
+    </div>
+    <div class="resource-card obs">
+      <div class="res-icon" style="background:rgba(86,203,163,.18);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2.5" fill="#56cba3"/><path d="M12 8c-3 0-5 2.5-5 5l2 1 1 4h4l1-4 2-1c0-2.5-2-5-5-5z" fill="#56cba3" opacity=".7"/><path d="M7 13l-2 2m12-2l2 2" stroke="#56cba3" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="res-title">Mindfulness Exercises</div>
+      <div class="res-desc">5-minute exercises you can do anywhere to stay grounded and present.</div>
+      <a href="https://www.mindful.org/how-to-meditate/" target="_blank" class="res-link">Explore →</a>
+    </div>
+    <div class="resource-card obs">
+      <div class="res-icon" style="background:rgba(247,37,133,.18);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="#f72585"/></svg>
+      </div>
+      <div class="res-title">Student Support</div>
+      <div class="res-desc">Practical tips for academic stress, exam anxiety, and student life challenges.</div>
+      <a href="https://www.nhs.uk/mental-health/children-and-young-adults/students/" target="_blank" class="res-link">Explore →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Benefits ── -->
+<section id="benefits">
+  <div class="benefits-header obs">
+    <div class="section-tag">Why MindCare AI</div>
+    <h2 class="section-title">Built for students like you</h2>
+  </div>
+  <div class="benefits-grid">
+    <div class="benefit-card obs">
+      <div class="ben-icon">🔒</div>
+      <div class="ben-title">100% Anonymous</div>
+      <div class="ben-desc">No sign-up. No name. No judgment. Your conversations are completely private.</div>
+    </div>
+    <div class="benefit-card obs">
+      <div class="ben-icon">⚡</div>
+      <div class="ben-title">Instant Support</div>
+      <div class="ben-desc">No waiting rooms, no appointments. AI support the moment you need it.</div>
+    </div>
+    <div class="benefit-card obs">
+      <div class="ben-icon">🆓</div>
+      <div class="ben-title">Always Free</div>
+      <div class="ben-desc">Zero cost, zero ads. Mental wellness should be accessible to every student.</div>
+    </div>
+    <div class="benefit-card obs">
+      <div class="ben-icon">🌐</div>
+      <div class="ben-title">Your Language</div>
+      <div class="ben-desc">Chat in English, Hindi, or Gujarati. MindCare speaks the language of your heart.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Testimonials ── -->
+<section id="testimonials">
+  <div class="testimonials-header obs">
+    <div class="section-tag">Student Stories</div>
+    <h2 class="section-title">What students say</h2>
+  </div>
+  <div class="testimonials-grid">
+    <div class="testimonial-card obs">
+      <div class="testimonial-stars">★★★★★</div>
+      <div class="testimonial-text">"MindCare AI helped me through my worst exam panic at 2 AM when there was no one to talk to. It actually listened and gave me breathing exercises that worked immediately."</div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar" style="background:rgba(155,93,229,.15);">👩</div>
+        <div>
+          <div class="testimonial-name">Priya S.</div>
+          <div class="testimonial-role">Engineering Student, Mumbai</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card obs">
+      <div class="testimonial-stars">★★★★★</div>
+      <div class="testimonial-text">"I can chat in Gujarati! Finally an app that feels like home. The mood tracker helped me realize I feel worse after late-night scrolling. Life-changing insight."</div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar" style="background:rgba(76,201,240,.15);">👨</div>
+        <div>
+          <div class="testimonial-name">Dhruv P.</div>
+          <div class="testimonial-role">MBA Student, Ahmedabad</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card obs">
+      <div class="testimonial-stars">★★★★★</div>
+      <div class="testimonial-text">"The journal prompts are beautifully designed. They pushed me to reflect in ways I never had before. I feel more self-aware and calm than I have in years."</div>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar" style="background:rgba(247,37,133,.15);">👩</div>
+        <div>
+          <div class="testimonial-name">Ananya R.</div>
+          <div class="testimonial-role">Psychology Student, Delhi</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo">
+          <div class="nav-logo-icon" style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#9b5de5,#6b46d6);display:flex;align-items:center;justify-content:center;font-size:.85rem;">🧠</div>
+          MindCare AI
+        </div>
+        <p>Compassionate, AI-powered mental health support for students — free, anonymous, and available 24/7.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a href="#about">About</a>
+        <a href="#features">Features</a>
+        <a href="#chat">Chat</a>
+        <a href="#journal">Journal</a>
+      </div>
+      <div class="footer-col">
+        <h4>Wellness</h4>
+        <a href="#mood">Mood Tracker</a>
+        <a href="#breathing">Breathing</a>
+        <a href="#affirmations">Affirmations</a>
+        <a href="#resources">Resources</a>
+      </div>
+      <div class="footer-col">
+        <h4>Crisis Help</h4>
+        <a href="tel:9152987821">iCall: 9152987821</a>
+        <a href="tel:18602662345">Vandrevala: 1860-2662-345</a>
+        <a href="tel:08046110007">NIMHANS: 080-46110007</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">Built with ❤️ by Team Nexensa · Solution Challenge 2026</div>
+      <div class="footer-disclaimer">⚠️ MindCare AI is not a replacement for professional mental health care. In crisis, please call iCall: <strong style="color:#f72585;">9152987821</strong></div>
+    </div>
+  </div>
+</footer>
+
+<!-- Crisis Button -->
+<a class="crisis-banner" href="https://icallhelpline.org/" target="_blank">🆘 Crisis? iCall: 9152987821</a>
+
+<!-- Risk Modal -->
+<div class="risk-modal-overlay" id="riskModal">
+  <div class="risk-modal">
+    <div class="risk-modal-icon">💜</div>
+    <h3>We Care About You</h3>
+    <p>It sounds like you're going through something really painful right now. You are not alone — there are people who want to help you through this.</p>
+    <div class="risk-helplines">
+      <div class="helpline-item">📞 iCall (India): <strong>9152987821</strong></div>
+      <div class="helpline-item">📞 Vandrevala Foundation: <strong>1860-2662-345</strong></div>
+      <div class="helpline-item">📞 NIMHANS Helpline: <strong>080-46110007</strong></div>
+    </div>
+    <p style="font-size:.82rem;margin-bottom:14px;">Want to keep talking to MindCare AI? I'm still here for you.</p>
+    <span class="risk-dismiss" onclick="closeRiskModal()">Continue with MindCare AI</span>
+  </div>
+</div>
+
+<!-- ── JS ── -->
+<script>
+/* ── Cursor ── */
+const dot = document.getElementById('cursorDot');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  ring.style.left = mx + 'px'; ring.style.top = my + 'px';
+});
+document.querySelectorAll('button,a,.emoji-btn,.feature-card,.resource-card').forEach(el => {
+  el.addEventListener('mouseenter', () => { ring.style.transform = 'translate(-50%,-50%) scale(1.6)'; ring.style.borderColor = 'rgba(155,93,229,.8)'; });
+  el.addEventListener('mouseleave', () => { ring.style.transform = 'translate(-50%,-50%) scale(1)'; ring.style.borderColor = 'rgba(155,93,229,.5)'; });
+});
+
+/* ── Scroll Progress ── */
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100;
+  document.getElementById('scrollBar').style.width = pct + '%';
+  const nav = document.getElementById('mainNav');
+  nav.classList.toggle('scrolled', window.scrollY > 30);
+});
+
+/* ── Scroll Observer ── */
+const obsIO = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('vis'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.obs,.obs-left,.obs-right').forEach(el => obsIO.observe(el));
+
+/* ── Nav ── */
+function toggleMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+function closeMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
+
+/* ── Claude Config ── */
+const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
+const SYSTEM_PROMPT = `You are MindCare AI, a compassionate and empathetic mental health support companion designed for students and young people (under 35) in India.
+
+Your personality:
+- Warm, caring, non-judgmental, and supportive
+- Use simple, friendly language — not clinical
+- Keep responses concise (2-5 sentences usually)
+- Add relevant emojis occasionally (not every sentence)
+- NEVER give medical diagnoses or specific medical advice
+
+Your role:
+- Listen actively and validate feelings
+- Offer practical coping strategies (breathing, grounding, journaling, breaks)
+- Suggest professional help when needed
+- If user mentions self-harm, suicide, or extreme distress: IMMEDIATELY provide iCall helpline (9152987821)
+
+Safety:
+- If user seems in crisis, always say: "Please reach out to iCall at 9152987821 — they are available 24/7 and can truly help."
+- Always remind that you are NOT a replacement for professional therapy
+
+You support English, Hindi, and Gujarati — respond in the language the user writes in.`;
+
+const RISK_KEYWORDS = [
+  'give up','want to die','kill myself','end my life','no reason to live',
+  'worthless','hopeless','cant go on',"can't go on",'suicide',
+  'self harm','hurt myself','nobody cares','alone forever','disappear',
+  'end it all','not worth living','better off dead','marna chahta','khatam karna'
+];
+
+const FALLBACK_RESPONSES = [
+  "I hear you. It's completely okay to feel this way. Would you like to try a quick breathing exercise? 🌊",
+  "Thank you for sharing with me. Every feeling is temporary — you're so brave for reaching out. 🌟",
+  "That sounds really tough. I'm right here for you. Want some stress relief tips or just to talk? 💜",
+  "You're so brave for opening up. Let's work through this together. Tell me more about what's on your mind. 🤗",
+  "I understand. Sometimes just expressing it helps. You are never alone in this. 🌸"
+];
+
+let conversationHistory = [];
+let msgCount = 0;
+
+function getTime() {
+  return new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+}
+
+async function callClaude(userMessage) {
+  conversationHistory.push({ role:'user', content: userMessage });
+  const res = await fetch(CLAUDE_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system: SYSTEM_PROMPT,
+      messages: conversationHistory
+    })
+  });
+  if(!res.ok) throw new Error('API ' + res.status);
+  const data = await res.json();
+  const reply = data.content?.[0]?.text || FALLBACK_RESPONSES[0];
+  conversationHistory.push({ role:'assistant', content: reply });
+  return reply;
+}
+
+function appendMsg(content, role) {
+  const area = document.getElementById('chatArea');
+  const row = document.createElement('div');
+  row.className = `msg-row${role === 'user' ? ' user' : ''}`;
+  const t = getTime();
+  if(role === 'user') {
+    row.innerHTML = `<div><div class="msg-bubble user">${escHtml(content)}</div><div class="msg-timestamp">${t}</div></div><div class="msg-avatar user-av">You</div>`;
+  } else {
+    row.innerHTML = `<div class="msg-avatar bot-av">🧠</div><div><div class="msg-bubble bot">${content}</div><div class="msg-timestamp">${t}</div></div>`;
+  }
+  area.appendChild(row);
+  area.scrollTop = area.scrollHeight;
+  msgCount++;
+  updateDashboard();
+}
+
+function showTyping() {
+  const area = document.getElementById('chatArea');
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.id = 'typingRow';
+  row.innerHTML = `<div class="msg-avatar bot-av">🧠</div>
+    <div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  area.appendChild(row);
+  area.scrollTop = area.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingRow');
+  if(t) t.remove();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function checkRisk(text) {
+  const lower = text.toLowerCase();
+  return RISK_KEYWORDS.some(k => lower.includes(k));
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  const msg = input.value.trim();
+  if(!msg) return;
+  appendMsg(msg, 'user');
+  input.value = '';
+  btn.disabled = true;
+  showTyping();
+  if(checkRisk(msg)) {
+    setTimeout(() => {
+      removeTyping();
+      appendMsg("💜 I'm here with you. It sounds like you're in a lot of pain right now — and that matters deeply. Please reach out to <strong>iCall: 9152987821</strong> — they're available 24/7 and care about you. You are not alone. 🌟", 'bot');
+      btn.disabled = false;
+      document.getElementById('riskModal').classList.add('show');
+    }, 1000);
+    return;
+  }
+  try {
+    const reply = await callClaude(msg);
+    removeTyping();
+    appendMsg(reply, 'bot');
+  } catch(err) {
+    removeTyping();
+    appendMsg(FALLBACK_RESPONSES[Math.floor(Math.random()*FALLBACK_RESPONSES.length)] + '<br><small style="color:#f87171;font-size:.75rem;">⚠️ Connection issue — try again.</small>', 'bot');
+  }
+  btn.disabled = false;
+}
+
+function sendQuick(msg) {
+  document.getElementById('chatInput').value = msg;
+  sendMessage();
+}
+
+function clearChat() {
+  conversationHistory = [];
+  const area = document.getElementById('chatArea');
+  area.innerHTML = `<div class="msg-row"><div class="msg-avatar bot-av">🧠</div><div><div class="msg-bubble bot">Chat cleared! Fresh start 💜 How are you feeling right now?</div><div class="msg-timestamp">${getTime()}</div></div></div>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  initJournal();
+  newAffirmation();
+  updateDashboard();
+});
+
+function closeRiskModal() { document.getElementById('riskModal').classList.remove('show'); }
+
+/* ── Breathing ── */
+let breathInterval = null, breathCountInterval = null, breathActive = false, cyclesDone = 0;
+const breathPhases = [
+  { text:'Breathe In 🌬️', dur:4, color:'linear-gradient(135deg,#9b5de5,#6b46d6)' },
+  { text:'Hold 🤲',        dur:4, color:'linear-gradient(135deg,#6b46d6,#4cc9f0)' },
+  { text:'Breathe Out 😮‍💨',dur:4, color:'linear-gradient(135deg,#4cc9f0,#56cba3)' },
+  { text:'Hold 🤲',        dur:4, color:'linear-gradient(135deg,#56cba3,#9b5de5)' }
+];
+let breathPhaseIdx = 0;
+
+function startBreathing() {
+  if(breathActive) return;
+  breathActive = true;
+  cyclesDone = 0;
+  document.getElementById('cycleCount').textContent = 0;
+  runBreathPhase();
+}
+
+function runBreathPhase() {
+  if(!breathActive) return;
+  const p = breathPhases[breathPhaseIdx];
+  const circle = document.getElementById('breathCircle');
+  const bar = document.getElementById('breathBar');
+  document.getElementById('breathPhaseText').textContent = p.text;
+  circle.style.background = p.color;
+
+  let count = p.dur;
+  document.getElementById('breathCountdown').textContent = count;
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  setTimeout(() => {
+    bar.style.transition = `width ${p.dur}s linear`;
+    bar.style.width = '100%';
+  }, 50);
+
+  clearInterval(breathCountInterval);
+  breathCountInterval = setInterval(() => {
+    count--;
+    if(count >= 0) document.getElementById('breathCountdown').textContent = count;
+  }, 1000);
+
+  breathInterval = setTimeout(() => {
+    breathPhaseIdx = (breathPhaseIdx + 1) % 4;
+    if(breathPhaseIdx === 0) {
+      cyclesDone++;
+      document.getElementById('cycleCount').textContent = cyclesDone;
+    }
+    if(breathActive) runBreathPhase();
+  }, p.dur * 1000);
+}
+
+function stopBreathing() {
+  breathActive = false;
+  clearTimeout(breathInterval);
+  clearInterval(breathCountInterval);
+  breathPhaseIdx = 0;
+  const circle = document.getElementById('breathCircle');
+  document.getElementById('breathPhaseText').textContent = 'Ready?';
+  document.getElementById('breathCountdown').textContent = '4';
+  circle.style.background = 'linear-gradient(135deg,#9b5de5,#6b46d6)';
+  document.getElementById('breathBar').style.width = '0%';
+}
+
+/* ── Mood ── */
+let moodLog = [];
+
+function selectMood(btn) {
+  document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const mood = btn.dataset.mood;
+  const now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  moodLog.unshift({mood, time:now});
+  if(moodLog.length > 12) moodLog.pop();
+
+  const msg = document.getElementById('moodMsg');
+  msg.style.opacity = '1';
+  setTimeout(() => { msg.style.opacity = '0'; }, 3000);
+
+  const hist = document.getElementById('moodHistory');
+  const log = document.getElementById('moodLog');
+  hist.classList.add('show');
+  log.innerHTML = moodLog.map(e =>
+    `<div class="mood-log-item"><span style="font-size:1.3rem">${e.mood.split(' ')[1]||''}</span><span style="font-weight:600;color:var(--dark)">${e.mood.split(' ')[0]}</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem">${e.time}</span></div>`
+  ).join('');
+  updateDashboard();
+}
+
+/* ── Journal ── */
+const JOURNAL_PROMPTS = [
+  "What's one thing that's been weighing on your mind lately, and what might it be trying to tell you?",
+  "Describe a moment this week when you felt truly at peace. What were you doing, and what made it special?",
+  "Write a letter of compassion to your past self from six months ago.",
+  "What are three things your anxiety or stress might be protecting you from? Explore this without judgment.",
+  "If your current emotional state were a weather pattern, what would it look like? What would change the weather?",
+  "What is one thing you're proud of yourself for this week, no matter how small?",
+  "Describe someone who makes you feel safe and heard. What qualities do they have that you'd like to cultivate in yourself?",
+  "What boundaries would most improve your mental health right now? What's stopping you from setting them?",
+  "Write about a fear you carry. Where did it come from? Is it still serving you?",
+  "What does your ideal 'mental health day' look like? Plan it in detail.",
+  "When did you last ask for help? How did it feel? What would make it easier next time?",
+  "List 5 things your body does every day that you're grateful for.",
+  "What's a belief about yourself that you're ready to let go of?",
+  "How would you describe your relationship with yourself right now? Friend, critic, stranger?",
+  "What is one small act of self-care you can commit to today?"
+];
+
+let journalEntries = [];
+let currentPromptIdx = Math.floor(Math.random() * JOURNAL_PROMPTS.length);
+
+function initJournal() {
+  const now = new Date();
+  document.getElementById('journalDate').textContent = now.toLocaleDateString('en-IN', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('journalPromptText').textContent = JOURNAL_PROMPTS[currentPromptIdx];
+  renderJournalEntries();
+}
+
+function newJournalPrompt() {
+  currentPromptIdx = (currentPromptIdx + 1) % JOURNAL_PROMPTS.length;
+  const el = document.getElementById('journalPromptText');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    el.textContent = JOURNAL_PROMPTS[currentPromptIdx];
+    el.style.opacity = '1';
+  }, 300);
+}
+
+function updateCharCount() {
+  document.getElementById('charCount').textContent = document.getElementById('journalTextarea').value.length;
+}
+
+function saveJournalEntry() {
+  const text = document.getElementById('journalTextarea').value.trim();
+  if(!text) { alert('Write something first! 💜'); return; }
+  const now = new Date();
+  journalEntries.unshift({
+    text,
+    date: now.toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}),
+    prompt: JOURNAL_PROMPTS[currentPromptIdx]
+  });
+  if(journalEntries.length > 10) journalEntries.pop();
+  document.getElementById('journalTextarea').value = '';
+  document.getElementById('charCount').textContent = '0';
+  renderJournalEntries();
+  updateDashboard();
+}
+
+function renderJournalEntries() {
+  const list = document.getElementById('journalEntriesList');
+  if(!journalEntries.length) { list.innerHTML = ''; return; }
+  list.innerHTML = `<h4 style="font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">📖 Past Entries</h4>` +
+    journalEntries.map((e,i) => `
+      <div class="journal-entry-item">
+        <div class="journal-entry-date">🗓 ${e.date} · Prompt: "${e.prompt.substring(0,50)}..."</div>
+        <div class="journal-entry-text">${e.text.substring(0,200)}${e.text.length > 200 ? '...' : ''}</div>
+      </div>
+    `).join('');
+}
+
+/* ── Affirmations ── */
+const affirmations = [
+  ["You are stronger than you think. Every challenge makes you wiser.", "Your daily reminder 💜"],
+  ["Your mental health matters more than your grades. Be kind to yourself today.", "MindCare AI 🧠"],
+  ["You deserve peace, rest, and happiness. Prioritize yourself today.", "Your daily reminder 💜"],
+  ["Progress, not perfection. Every small step you take counts enormously.", "MindCare AI 🧠"],
+  ["You are enough, exactly as you are right now, in this moment.", "Your daily reminder 💜"],
+  ["This feeling is temporary. You have weathered every storm before this one.", "MindCare AI 🧠"],
+  ["You have overcome 100% of your worst days. That's extraordinary.", "Your daily reminder 💜"],
+  ["Your feelings are completely valid. You are never alone in this.", "MindCare AI 🧠"],
+  ["Today is a fresh start. Every sunrise gives you a new beginning. 🌅", "Your daily reminder 💜"],
+  ["You are capable of amazing things — especially on the days you doubt it most.", "MindCare AI 🧠"],
+  ["Be as gentle with yourself as you would be with someone you love.", "Your daily reminder 💜"],
+  ["Healing is not linear. You are exactly where you need to be. 💜", "MindCare AI 🧠"],
+  ["Your presence matters more than you will ever know.", "Your daily reminder 💜"],
+  ["Rest is not laziness. Recovery is not weakness. You deserve both.", "MindCare AI 🧠"]
+];
+
+let affirmIdx = 0;
+function newAffirmation() {
+  const el = document.getElementById('affirmText');
+  const auth = document.getElementById('affirmAuthor');
+  el.style.opacity = '0'; el.style.transform = 'translateY(10px)';
+  setTimeout(() => {
+    affirmIdx = (affirmIdx + 1) % affirmations.length;
+    el.textContent = affirmations[affirmIdx][0];
+    auth.textContent = '— ' + affirmations[affirmIdx][1];
+    el.style.opacity = '1'; el.style.transform = 'translateY(0)';
+  }, 350);
+}
+
+/* ── Dashboard ── */
+function updateDashboard() {
+  // This is a lightweight tracker stored in memory
+}
+</script>
+</body>
+</html>
